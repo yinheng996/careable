@@ -31,3 +31,27 @@ export async function getEvents() {
 
   return data as Event[]
 }
+
+export async function getUserRegistrations(userId: string) {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('registrations')
+    .select(`
+      *,
+      events (
+        title,
+        location,
+        start_time,
+        end_time
+      )
+    `)
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching user registrations:', error)
+    return []
+  }
+
+  return data
+}
