@@ -1,8 +1,8 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
-// Public routes: Landing page and Authentication pages
-const isPublicRoute = createRouteMatcher(["/", "/sign-in(.*)", "/sign-up(.*)"]);
+// Public routes: Landing page, Authentication, and Webhooks
+const isPublicRoute = createRouteMatcher(["/", "/sign-in(.*)", "/sign-up(.*)", "/api/webhooks(.*)"]);
 const isOnboardingRoute = createRouteMatcher(["/onboarding"]);
 
 export default clerkMiddleware(async (auth, req) => {
@@ -15,7 +15,7 @@ export default clerkMiddleware(async (auth, req) => {
 
   // 2. Handle logic for authenticated users
   if (userId) {
-    const role = sessionClaims?.metadata?.role;
+    const role = (sessionClaims?.metadata as any)?.role || (sessionClaims as any)?.app_role;
 
     // A. Force Onboarding if no role is assigned
     if (!role && !isOnboardingRoute(req)) {
