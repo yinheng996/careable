@@ -8,4 +8,4 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 export const geminiClient = genAI;
 
-export const DEFAULT_MODEL = "gemini-1.5-flash";
+export const DEFAULT_MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash";

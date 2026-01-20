@@ -7,32 +7,23 @@ import path from "path";
 import os from "os";
 
 // Define the schema using Zod
-export const CalendarEventSchema = z.object({
-  event_name: z.string(),
-  date_iso: z.string().nullable().describe("YYYY-MM-DD only if explicit enough, else null"),
-  date_text: z.string().nullable().describe("raw label seen (e.g., '12 Jan', 'Fri 3')"),
-  start_time: z.string().nullable().describe("'HH:MM' 24h preferred"),
-  end_time: z.string().nullable().describe("'HH:MM' 24h preferred"),
-  location: z.string().nullable(),
-  singapore_area: z.string().nullable().describe("Identify the area in Singapore: North, South, East, West, Central, or specific neighborhood if clear"),
-  category: z.enum([
-    "Social Outing",
-    "Arts & Crafts",
-    "Life Skills",
-    "Sports & Fitness",
-    "Music Session"
-  ]).nullable().describe("Categorize the event into one of the allowed categories"),
-  notes: z.string().nullable(),
-  source_text: z.string().nullable().describe("short supporting snippet from the calendar cell/line")
+export const ExtractedEventSchema = z.object({
+  title: z.string().describe("The name of the activity or event"),
+  date_iso: z.string().describe("The full ISO date YYYY-MM-DD based on the calendar grid and the identified Month/Year"),
+  start_time: z.string().nullable().describe("Start time in 'HH:MM' 24h format. Convert 12h (e.g. 3pm) to 24h (15:00)"),
+  end_time: z.string().nullable().describe("End time in 'HH:MM' 24h format. Convert 12h (e.g. 4pm) to 24h (16:00)"),
+  location: z.string().nullable().describe("The full address or meeting venue mapped from the legend icons/colors or explicitly stated"),
+  is_accessible: z.boolean().default(true).describe("Set to true if wheelchair accessible icon is present, else true by default for this organization"),
+  description: z.string().nullable().describe("Any additional notes, 'Things to bring', or context visible for this specific event"),
 });
 
 export const CalendarExtractionSchema = z.object({
   meta: z.object({
-    source_filename: z.string(),
-    source_mime: z.string(),
+    month: z.string().describe("The month identified from the calendar header (e.g., 'December')"),
+    year: z.number().describe("The year identified from the calendar header (e.g., 2025)"),
     calendar_type: z.enum(["monthly_grid", "weekly_grid", "agenda_list", "unknown"])
   }),
-  events: z.array(CalendarEventSchema)
+  events: z.array(ExtractedEventSchema)
 });
 
 export type CalendarExtraction = z.infer<typeof CalendarExtractionSchema>;
@@ -48,56 +39,163 @@ const SUPPORTED_MIME_TYPES = [
   "image/jpeg",
   "image/jpg",
   "image/webp",
-  "application/pdf",
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation" // pptx
+  "application/pdf"
 ];
 
 /**
- * Extracts calendar events from a file buffer using Gemini API.
- * Portable library function for use in staff workflows.
+ * Extracts calendar events from a file buffer using Gemini API with streaming support.
  */
-export async function extractCalendarEvents(input: ExtractionInput): Promise<CalendarExtraction> {
+export async function* extractCalendarEventsStream(input: ExtractionInput) {
   const { buffer, filename, mimeType: originalMimeType } = input;
   let currentMimeType = originalMimeType.toLowerCase();
   
-  // Normalize mime types
   if (currentMimeType === "image/jpg") currentMimeType = "image/jpeg";
 
   if (!SUPPORTED_MIME_TYPES.includes(currentMimeType)) {
-    throw new Error("file type not supported");
+    throw new Error("File type not supported. Please upload an image or PDF.");
   }
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY is not set");
 
-  const modelName = process.env.GEMINI_MODEL || "gemini-1.5-flash";
+  const modelName = process.env.GEMINI_MODEL || "gemini-2.0-flash-exp";
   const genAI = new GoogleGenerativeAI(apiKey);
   const fileManager = new GoogleAIFileManager(apiKey);
+
+  const correlationId = Math.random().toString(36).substring(2, 10).toUpperCase();
+  console.log(`[${correlationId}] [AUDIT] Starting extraction for: ${filename}`);
+  console.log(`[${correlationId}] [AUDIT] Model: ${modelName} | MIME: ${currentMimeType}`);
 
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "calendar-extract-"));
   const tempInputPath = path.join(tempDir, filename);
   await fs.writeFile(tempInputPath, buffer);
 
   try {
-    // Upload to Gemini Files API (handles all types natively, including PPTX)
     const uploadResult = await fileManager.uploadFile(tempInputPath, {
       mimeType: currentMimeType,
       displayName: filename,
     });
 
     let file = uploadResult.file;
-    
-    // Poll for processing state
     while (file.state === FileState.PROCESSING) {
       await new Promise((resolve) => setTimeout(resolve, 2000));
       file = await fileManager.getFile(file.name);
     }
 
-    if (file.state === FileState.FAILED) {
-      throw new Error("Gemini file processing failed");
+    if (file.state === FileState.FAILED) throw new Error("Gemini file processing failed");
+
+    const model = genAI.getGenerativeModel({
+      model: modelName,
+    });
+
+    const prompt = `You are a Senior Data Engineer specializing in Computer Vision and Document Extraction.
+Your task is to extract event data from a caregiver organization's calendar image with 100% precision.
+
+STEP-BY-STEP EXTRACTION PROCESS:
+1. HEADER ANALYSIS: 
+   - Identify the Month and Year (e.g., "DEC 2025" or "NOVEMBER 2025").
+2. LEGEND & VENUE MAPPING:
+   - Carefully read the "Legend", "Meeting Venues", or "Locations" section (usually at the bottom or side).
+   - Create a mental map of activity categories/colors to their full addresses.
+3. GRID EXTRACTION:
+   - Iterate through every numbered day in the calendar grid.
+   - For each day that contains text (an event), generate YYYY-MM-DD, extract title, start/end time, and map venue.
+
+OUTPUT FORMAT:
+First, output your reasoning process in plain text. Explain how you are identifying the month, mapping the venues, and processing the grid.
+Then, output exactly the string "[RESULT_START]" followed by the final result as a single JSON block matching the schema below.
+Finally, output "[RESULT_END]".
+
+SCHEMA:
+${JSON.stringify(zodToJsonSchema(CalendarExtractionSchema))}
+
+Begin your reasoning now:`;
+
+    const result = await model.generateContentStream([
+      {
+        fileData: {
+          mimeType: file.mimeType,
+          fileUri: file.uri,
+        },
+      },
+      { text: prompt },
+    ]);
+
+    let fullText = "";
+    for await (const chunk of result.stream) {
+      const chunkText = chunk.text();
+      fullText += chunkText;
+      yield { type: "text", content: chunkText };
     }
 
-    // Call Gemini with structured output
+    console.log(`\n[${correlationId}] [AUDIT] Received full response from Gemini`);
+    
+    const resultMatch = fullText.match(/\[RESULT_START\]([\s\S]*?)\[RESULT_END\]/);
+    if (resultMatch) {
+      try {
+        const jsonContent = resultMatch[1].trim();
+        const parsed = JSON.parse(jsonContent);
+        console.log(`[${correlationId}] [AUDIT] Successfully parsed JSON. Found ${parsed.events?.length || 0} events.`);
+        yield { type: "json", content: parsed };
+      } catch (e) {
+        console.error(`[${correlationId}] [AUDIT ERROR] Failed to parse JSON:`, e);
+        yield { type: "error", content: "Failed to parse extraction results." };
+      }
+    } else {
+      console.warn(`[${correlationId}] [AUDIT WARNING] No [RESULT_START] block found`);
+      yield { type: "error", content: "No structured data found in response." };
+    }
+
+  } catch (error: any) {
+    console.error(`[${correlationId}] [AUDIT ERROR] Exception:`, error.message);
+    throw error;
+  } finally {
+    await fs.rm(tempDir, { recursive: true, force: true });
+    console.log(`[${correlationId}] [AUDIT] Cleanup completed.`);
+  }
+}
+
+/**
+ * Extracts calendar events from a file buffer using Gemini API.
+ */
+export async function extractCalendarEvents(input: ExtractionInput): Promise<CalendarExtraction> {
+  const { buffer, filename, mimeType: originalMimeType } = input;
+  let currentMimeType = originalMimeType.toLowerCase();
+  
+  if (currentMimeType === "image/jpg") currentMimeType = "image/jpeg";
+
+  if (!SUPPORTED_MIME_TYPES.includes(currentMimeType)) {
+    throw new Error("File type not supported. Please upload an image or PDF.");
+  }
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("GEMINI_API_KEY is not set");
+
+  const modelName = process.env.GEMINI_MODEL || "gemini-2.0-flash-exp";
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const fileManager = new GoogleAIFileManager(apiKey);
+
+  const correlationId = Math.random().toString(36).substring(2, 10).toUpperCase();
+  console.log(`[${correlationId}] [AUDIT] Starting single extraction for: ${filename}`);
+
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "calendar-extract-"));
+  const tempInputPath = path.join(tempDir, filename);
+  await fs.writeFile(tempInputPath, buffer);
+
+  try {
+    const uploadResult = await fileManager.uploadFile(tempInputPath, {
+      mimeType: currentMimeType,
+      displayName: filename,
+    });
+
+    let file = uploadResult.file;
+    while (file.state === FileState.PROCESSING) {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      file = await fileManager.getFile(file.name);
+    }
+
+    if (file.state === FileState.FAILED) throw new Error("Gemini file processing failed");
+
     const jsonSchema: any = zodToJsonSchema(CalendarExtractionSchema);
     const cleanSchema = { ...jsonSchema };
     delete cleanSchema.$schema;
@@ -109,36 +207,39 @@ export async function extractCalendarEvents(input: ExtractionInput): Promise<Cal
       generationConfig: {
         responseMimeType: "application/json",
         responseJsonSchema: cleanSchema as any,
-        temperature: 0.1, // Lower temperature for more consistent classification
+        temperature: 0.1,
       },
     });
 
-    const prompt = `You are extracting events from a calendar export (image, PDF, or PowerPoint) for a caregiving service in Singapore. 
-Return ONLY events that are explicitly visible; do not guess.
+    const prompt = `You are a Senior Data Engineer specializing in Computer Vision and Document Extraction.
+Your task is to extract event data from a caregiver organization's calendar image with 100% precision.
 
-Rules for Event Extraction:
-- If a field (date/time/location) is not clearly shown, set it to null.
-- date_iso must be YYYY-MM-DD ONLY when the date is explicit enough. If the year is missing or ambiguous, set date_iso=null and put the visible label in date_text.
-- start_time/end_time must be "HH:MM" when possible; if only "10am" is shown, convert to "10:00". If unclear, null.
-- location must be null unless explicitly present.
-- notes can include extra visible context.
-- source_text should be a short snippet copied/paraphrased from the source.
-- Identify calendar_type as monthly_grid / weekly_grid / agenda_list / unknown.
+STEP-BY-STEP EXTRACTION PROCESS:
+1. HEADER ANALYSIS: 
+   - Identify the Month and Year (e.g., "DEC 2025" or "NOVEMBER 2025").
+2. LEGEND & VENUE MAPPING:
+   - Carefully read the "Legend", "Meeting Venues", or "Locations" section (usually at the bottom or side).
+   - Create a mental map of activity categories/colors to their full addresses.
+   - Examples: 
+     - "Activities in MTC Office" -> "MTC Eunos Office, Level 2"
+     - "Gardens by the Bay" -> "Gardens by the Bay"
+     - "Bowling @ Yishun SAFRA" -> "Yishun SAFRA"
+3. GRID EXTRACTION:
+   - Iterate through every numbered day in the calendar grid.
+   - For each day that contains text (an event):
+     - Generate 'date_iso' as YYYY-MM-DD using the year and month from the header and the day number from the box.
+     - Extract 'title' exactly as written (e.g., "Terrarium @ Tampines East").
+     - Extract 'start_time' and 'end_time'. 
+       - Convert 12h formats (e.g., "3-4pm", "10am-12.30pm") to 24h ISO format "HH:MM".
+       - Example: "3-4pm" -> start="15:00", end="16:00".
+       - Example: "10am-12.30pm" -> start="10:00", end="12:30".
+     - Map 'location' by looking at the title or the activity category (via color/icon). Use the full address from the legend if available.
+     - Detect 'is_accessible': Set to true if you see a wheelchair icon (♿) or if the legend/title implies it.
+4. QUALITY CONTROL:
+   - Ensure 'events' is a flat array of all activities found across the entire month.
+   - If no events are found, return an empty array for 'events', but still include the 'meta' object.
 
-Specific Rules for Classification:
-1. Category: You MUST assign one of the following categories based on the event description:
-   - "Social Outing": Visits to places, community gatherings, lunches.
-   - "Arts & Crafts": Painting, DIY, knitting, creative workshops.
-   - "Life Skills": Cooking, computer classes, financial literacy, personal care.
-   - "Sports & Fitness": Exercise, yoga, walks, physical games.
-   - "Music Session": Singing, playing instruments, music therapy, karaoke.
-   If it doesn't fit any of these well, default to the closest or null if absolutely no info.
-
-2. Singapore Area: Identify which part of Singapore the event is in based on the location/context:
-   - Examples: North, South, East, West, Central, or specific regions like "Jurong", "Tampines", "Woodlands", "Tiong Bahru".
-   - If the location is not in Singapore or not clear, set to null.
-
-Output must be valid JSON strictly matching the provided schema. No markdown.`;
+Output must be strictly valid JSON matching the provided schema.`;
 
     const result = await model.generateContent([
       {
@@ -151,36 +252,25 @@ Output must be valid JSON strictly matching the provided schema. No markdown.`;
     ]);
 
     const responseText = result.response.text();
-    const cleanJson = responseText.replace(/^```json\n?/, "").replace(/\n?```$/, "").trim();
-    const parsed = JSON.parse(cleanJson);
-
-    // Sort events by date_iso/start_time
-    if (parsed.events && Array.isArray(parsed.events)) {
-      parsed.events.sort((a: any, b: any) => {
-        if (a.date_iso && b.date_iso) {
-          if (a.date_iso !== b.date_iso) return a.date_iso.localeCompare(b.date_iso);
-          return (a.start_time || "").localeCompare(b.start_time || "");
-        }
-        if (a.date_iso) return -1;
-        if (b.date_iso) return 1;
-        return 0;
-      });
+    console.log(`\n[${correlationId}] [AUDIT] Received full response from Gemini`);
+    console.log(responseText);
+    
+    const parsed = JSON.parse(responseText);
+    
+    // Ensure events is always an array
+    if (!parsed.events) {
+      console.warn(`[${correlationId}] [AUDIT WARNING] No events array in response`);
+      parsed.events = [];
+    } else {
+      console.log(`[${correlationId}] [AUDIT] Successfully parsed JSON. Found ${parsed.events.length} events.`);
     }
-
-    // Ensure meta matches actual input
-    parsed.meta = {
-      ...parsed.meta,
-      source_filename: filename,
-      source_mime: originalMimeType,
-    };
-
+    
     return parsed;
+  } catch (error: any) {
+    console.error(`[${correlationId}] [AUDIT ERROR] Exception:`, error.message);
+    throw error;
   } finally {
-    // Cleanup temp files
-    try {
-      await fs.rm(tempDir, { recursive: true, force: true });
-    } catch (err) {
-      console.error("Cleanup error:", err);
-    }
+    await fs.rm(tempDir, { recursive: true, force: true });
+    console.log(`[${correlationId}] [AUDIT] Cleanup completed.`);
   }
 }

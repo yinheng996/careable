@@ -12,9 +12,13 @@
     "@clerk/nextjs": "^6.36.8",
     "@google/generative-ai": "^0.24.1",
     "@hookform/resolvers": "^5.2.2",
+    "@radix-ui/react-slot": "^1.2.4",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.90.1",
+    "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
+    "lucide-react": "^0.562.0",
     "next": "16.1.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -22,7 +26,8 @@
     "server-only": "^0.0.1",
     "svix": "^1.84.1",
     "tailwind-merge": "^3.4.0",
-    "zod": "^4.3.5"
+    "zod": "^4.3.5",
+    "zod-to-json-schema": "^3.25.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

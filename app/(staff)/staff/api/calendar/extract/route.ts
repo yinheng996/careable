@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { extractCalendarEvents } from "@/app/(staff)/staff/lib/calendarExtractor";
+import { extractCalendarEventsStream } from "@/app/(staff)/staff/lib/calendarExtractor";
 
 export const runtime = "nodejs";
 
-const MAX_FILE_SIZE = 4.5 * 1024 * 1024; // 4.5MB Vercel Serverless Function limit
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // Increased limit
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,37 +14,38 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json(
-        { error: `File too large (max 4.5MB for Vercel). Your file: ${(file.size / (1024 * 1024)).toFixed(2)}MB` }, 
-        { status: 413 }
-      );
-    }
-
     const buffer = Buffer.from(await file.arrayBuffer());
     const filename = file.name;
     const mimeType = file.type || getMimeFromExtension(filename);
 
-    try {
-      const result = await extractCalendarEvents({
-        buffer,
-        filename,
-        mimeType,
-      });
+    const correlationId = Math.random().toString(36).substring(2, 10).toUpperCase();
+    console.log(`[${correlationId}] [ROUTE] Received extraction request for ${filename}`);
 
-      return NextResponse.json(result);
-    } catch (error: any) {
-      console.error("Extraction error:", error);
-      
-      if (error.message === "file type not supported") {
-        return NextResponse.json({ error: "file type not supported" }, { status: 415 });
-      }
+    const stream = new ReadableStream({
+      async start(controller) {
+        const encoder = new TextEncoder();
+        try {
+          console.log(`[${correlationId}] [ROUTE] Starting stream for ${filename}`);
+          for await (const chunk of extractCalendarEventsStream({ buffer, filename, mimeType })) {
+            controller.enqueue(encoder.encode(JSON.stringify(chunk) + "\n"));
+          }
+          console.log(`[${correlationId}] [ROUTE] Stream completed successfully for ${filename}`);
+          controller.close();
+        } catch (error: any) {
+          console.error(`[${correlationId}] [ROUTE ERROR] Stream failed:`, error.message);
+          controller.enqueue(encoder.encode(JSON.stringify({ type: "error", content: error.message }) + "\n"));
+          controller.close();
+        }
+      },
+    });
 
-      return NextResponse.json(
-        { error: error.message || "Internal server error" },
-        { status: 500 }
-      );
-    }
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+      },
+    });
   } catch (error: any) {
     console.error("Route error:", error);
     return NextResponse.json({ error: "Failed to process request" }, { status: 500 });
