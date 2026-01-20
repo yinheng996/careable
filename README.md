@@ -20,6 +20,64 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+### Calendar Event Extractor (Staff Portal)
+
+A portable event-extraction module for the Staff Portal, using Google Gemini API. This version includes specific categorization for Singapore-based caregiving services.
+
+#### Features
+- Extracts structured JSON events from images (PNG, JPEG, WebP), PDFs, and PPTX files.
+- **Auto-Categorization**: Social Outing, Arts & Crafts, Life Skills, Sports & Fitness, Music Session.
+- **Location Awareness**: Automatically identifies the area of Singapore (North, South, East, West, Central).
+- **Vercel Ready**: No local binary dependencies.
+- **Staff-Specific**: Located within the `app/(staff)/staff` directory.
+
+#### Tech Stack
+- Next.js App Router
+- `@google/generative-ai`
+- Zod + zod-to-json-schema
+
+#### Installation
+1. Install dependencies:
+   ```bash
+   npm install @google/generative-ai zod zod-to-json-schema
+   ```
+2. Set environment variables:
+   ```env
+   GEMINI_API_KEY=your_key
+   GEMINI_MODEL=gemini-1.5-flash
+   ```
+
+#### API Endpoint
+`POST /staff/api/calendar/extract`
+
+- **Body**: `multipart/form-data`
+- **Field**: `file` (max 4.5MB)
+
+#### Example Response
+```json
+{
+  "meta": {
+    "source_filename": "calendar.pdf",
+    "source_mime": "application/pdf",
+    "calendar_type": "monthly_grid"
+  },
+  "events": [
+    {
+      "event_name": "Painting Class",
+      "date_iso": "2026-02-15",
+      "date_text": "15 Feb",
+      "start_time": "14:00",
+      "end_time": "16:00",
+      "location": "Tampines Hub",
+      "singapore_area": "East",
+      "category": "Arts & Crafts",
+      "notes": "Bring your own apron",
+      "source_text": "2pm Painting @ Tampines Hub"
+    }
+  ]
+}
+```
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
