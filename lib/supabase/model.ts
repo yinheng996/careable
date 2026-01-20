@@ -1,0 +1,55 @@
+/**
+ * Careable Database Schema Types
+ * Matches the PostgreSQL schema in Supabase.
+ */
+
+export type UserRole = 'admin' | 'staff' | 'volunteer' | 'caregiver' | 'participant';
+export type RegistrationStatus = 'registered' | 'attended' | 'cancelled';
+
+export interface Profile {
+  id: string; // UUID
+  email: string;
+  full_name: string | null;
+  role: UserRole;
+  membership_type: string | null;
+  managed_by: string | null; // UUID reference to Profile.id
+  created_at: string; // Timestamptz
+  updated_at: string; // Timestamptz
+}
+
+export interface Event {
+  id: string; // UUID
+  created_by: string; // Profile.id
+  title: string;
+  description: string | null;
+  location: string;
+  start_time: string; // Timestamptz
+  end_time: string; // Timestamptz
+  capacity: number;
+  is_accessible: boolean;
+  created_at: string; // Timestamptz
+}
+
+export interface Registration {
+  id: string; // UUID
+  event_id: string; // Event.id
+  user_id: string; // Profile.id
+  ticket_code: string; // Unique slug/code for QR
+  status: RegistrationStatus;
+  check_in_at: string | null; // Timestamptz
+  created_at: string; // Timestamptz
+}
+
+/**
+ * Composite type for UI that combines registration and event details
+ */
+export type RegistrationWithEvent = Registration & {
+  event: Pick<Event, 'title' | 'location' | 'start_time' | 'end_time' | 'is_accessible'>;
+};
+
+/**
+ * Composite type for Staff/Admin view of registrations
+ */
+export type RegistrationWithUser = Registration & {
+  profile: Pick<Profile, 'full_name' | 'email' | 'membership_type'>;
+};
