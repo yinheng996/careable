@@ -1,12 +1,12 @@
 'use client';
 
 import * as React from 'react';
-import { Globe, Type, Sun, Moon } from 'lucide-react';
+import { Globe, Type } from 'lucide-react';
 import { usePreferences } from './PreferencesProvider';
 import type { LanguagePreference, FontSize } from '@/lib/supabase/model';
 
 export function PreferenceToggles() {
-  const { preferences, setLanguage, setFontSize, setTheme, isLoading } = usePreferences();
+  const { preferences, setLanguage, setFontSize, isLoading } = usePreferences();
 
   // Cycle through languages: EN → ZH → MS → EN
   const cycleLanguage = () => {
@@ -50,11 +50,11 @@ export function PreferenceToggles() {
       <button
         onClick={cycleLanguage}
         disabled={isLoading}
-        className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all active:scale-95 disabled:opacity-50"
+        className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg hover:bg-zinc-100 transition-all active:scale-95 disabled:opacity-50"
         aria-label={`Change language (current: ${preferences.language.toUpperCase()})`}
         title={`Tap to change language (${preferences.language.toUpperCase()})`}
       >
-        <Globe className="w-4 h-4 text-[#6B5A4E] dark:text-zinc-400" />
+        <Globe className="w-4 h-4 text-[#6B5A4E]" />
         <span className="text-base hidden sm:inline">
           {getCurrentFlag()}
         </span>
@@ -64,34 +64,14 @@ export function PreferenceToggles() {
       <button
         onClick={cycleFontSize}
         disabled={isLoading}
-        className="flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all active:scale-95 disabled:opacity-50 min-w-[36px] justify-center"
+        className="flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-zinc-100 transition-all active:scale-95 disabled:opacity-50 min-w-[36px] justify-center"
         aria-label={`Change font size (current: ${preferences.fontSize})`}
         title={`Tap to change size (${getFontSizeIndicator()})`}
       >
-        <Type className="w-4 h-4 text-[#6B5A4E] dark:text-zinc-400" />
-        <span className="text-[10px] font-bold text-[#6B5A4E] dark:text-zinc-400 hidden sm:inline">
+        <Type className="w-4 h-4 text-[#6B5A4E]" />
+        <span className="text-[10px] font-bold text-[#6B5A4E] hidden sm:inline">
           {getFontSizeIndicator()}
         </span>
-      </button>
-
-      {/* Theme Toggle - Single tap */}
-      <button
-        onClick={() => {
-          const newTheme = preferences.theme === 'light' ? 'dark' : 'light';
-          console.log('☀️/🌙 [BUTTON CLICK] Current theme:', preferences.theme);
-          console.log('☀️/🌙 [BUTTON CLICK] Switching to:', newTheme);
-          setTheme(newTheme);
-        }}
-        disabled={isLoading}
-        className="flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all active:scale-95 disabled:opacity-50"
-        aria-label={`Toggle theme (current: ${preferences.theme})`}
-        title={`Tap to switch to ${preferences.theme === 'light' ? 'dark' : 'light'} mode`}
-      >
-        {preferences.theme === 'light' ? (
-          <Sun className="w-4 h-4 text-[#6B5A4E]" />
-        ) : (
-          <Moon className="w-4 h-4 text-zinc-400" />
-        )}
       </button>
     </div>
   );

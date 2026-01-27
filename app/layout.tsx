@@ -27,7 +27,7 @@ export default function RootLayout({
     <ClerkProvider>
       <html lang="en" suppressHydrationWarning style={{ colorScheme: 'light' }}>
         <head>
-          <meta name="color-scheme" content="light dark" />
+          <meta name="color-scheme" content="light only" />
         </head>
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}

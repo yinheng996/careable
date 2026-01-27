@@ -1,14 +1,13 @@
 'use client';
 
 import * as React from 'react';
-import type { LanguagePreference, FontSize, Theme } from '@/lib/supabase/model';
+import type { LanguagePreference, FontSize } from '@/lib/supabase/model';
 import { getTranslations, type Translations } from '@/lib/i18n/translations';
-import { updateLanguage, updateFontSize, updateTheme } from '@/app/actions/preferences';
+import { updateLanguage, updateFontSize } from '@/app/actions/preferences';
 
 export interface UserPreferences {
   language: LanguagePreference;
   fontSize: FontSize;
-  theme: Theme;
 }
 
 interface PreferencesContextType {
@@ -16,7 +15,6 @@ interface PreferencesContextType {
   translations: Translations;
   setLanguage: (lang: LanguagePreference) => Promise<void>;
   setFontSize: (size: FontSize) => Promise<void>;
-  setTheme: (theme: Theme) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -35,46 +33,14 @@ export function PreferencesProvider({
   const translations = React.useMemo(() => getTranslations(preferences.language), [preferences.language]);
 
   // Prevent hydration mismatch by only running after mount
+  // Always force light mode regardless of system preference
   React.useEffect(() => {
     setMounted(true);
     
-    // Apply theme immediately on mount to override system preference
     const root = document.documentElement;
-    if (initialPreferences.theme === 'dark') {
-      root.classList.add('dark');
-      root.style.colorScheme = 'dark';
-    } else {
-      root.classList.remove('dark');
-      root.style.colorScheme = 'light';
-    }
+    root.classList.remove('dark');
+    root.style.colorScheme = 'light';
   }, []);
-
-  // Apply theme to document
-  React.useEffect(() => {
-    if (!mounted) return;
-    
-    console.log('🎨 [THEME EFFECT] Running theme effect');
-    console.log('🎨 [THEME EFFECT] preferences.theme:', preferences.theme);
-    console.log('🎨 [THEME EFFECT] mounted:', mounted);
-    
-    const root = document.documentElement;
-    console.log('🎨 [THEME EFFECT] Before - classList:', root.classList.toString());
-    console.log('🎨 [THEME EFFECT] Before - colorScheme:', root.style.colorScheme);
-    
-    if (preferences.theme === 'dark') {
-      root.classList.add('dark');
-      root.style.colorScheme = 'dark';
-      console.log('🎨 [THEME EFFECT] Applied DARK theme');
-    } else {
-      root.classList.remove('dark');
-      root.style.colorScheme = 'light';
-      console.log('🎨 [THEME EFFECT] Applied LIGHT theme');
-    }
-    
-    console.log('🎨 [THEME EFFECT] After - classList:', root.classList.toString());
-    console.log('🎨 [THEME EFFECT] After - colorScheme:', root.style.colorScheme);
-    console.log('🎨 [THEME EFFECT] After - background:', window.getComputedStyle(root).backgroundColor);
-  }, [preferences.theme, mounted]);
 
   // Apply font size to document
   React.useEffect(() => {
@@ -116,25 +82,6 @@ export function PreferencesProvider({
     }
   }, []);
 
-  const setTheme = React.useCallback(async (theme: Theme) => {
-    console.log('🌙 [SET_THEME] Called with theme:', theme);
-    console.log('🌙 [SET_THEME] Current preferences:', preferences);
-    
-    // Optimistic update - change UI immediately
-    setPreferences(prev => {
-      console.log('🌙 [SET_THEME] Updating from:', prev.theme, '→', theme);
-      return { ...prev, theme };
-    });
-    
-    // Save to database in background
-    try {
-      await updateTheme(theme);
-      console.log('🌙 [SET_THEME] Saved to database');
-    } catch (error) {
-      console.error('Failed to save theme preference:', error);
-    }
-  }, [preferences]);
-
   return (
     <PreferencesContext.Provider
       value={{
@@ -142,7 +89,6 @@ export function PreferencesProvider({
         translations,
         setLanguage,
         setFontSize,
-        setTheme,
         isLoading
       }}
     >
@@ -158,13 +104,11 @@ export function usePreferences() {
     return {
       preferences: {
         language: 'en' as LanguagePreference,
-        fontSize: 'medium' as FontSize,
-        theme: 'light' as Theme
+        fontSize: 'medium' as FontSize
       },
       translations: getTranslations('en'),
       setLanguage: async () => {},
       setFontSize: async () => {},
-      setTheme: async () => {},
       isLoading: false
     };
   }

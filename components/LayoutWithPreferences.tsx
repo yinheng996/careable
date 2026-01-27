@@ -11,11 +11,13 @@ export async function LayoutWithPreferences({
   const result = await getUserPreferences();
   
   const initialPreferences: UserPreferences = result.success && result.data
-    ? result.data
+    ? {
+        language: result.data.language,
+        fontSize: result.data.fontSize
+      }
     : {
         language: 'en',
-        fontSize: 'medium',
-        theme: 'light'
+        fontSize: 'medium'
       };
 
   return (
