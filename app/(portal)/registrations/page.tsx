@@ -1,77 +1,88 @@
-'use client'
+'use client';
 
-import * as React from 'react'
-import { getUserRegistrations } from '@/app/actions/participant'
-import { useAuth } from '@clerk/nextjs'
+import * as React from 'react';
+import { getUserRegistrations } from '@/app/actions/participant';
+import { useAuth } from '@clerk/nextjs';
 import { 
   Calendar as CalendarIcon, 
   MapPin, 
   Clock,
-  QrCode,
   Ticket,
   Loader2,
   CheckCircle,
-  ChevronRight,
   XCircle,
   Info,
   Sparkles
-} from 'lucide-react'
-import { format, isPast, isFuture } from 'date-fns'
-import AttendanceQR from '@/src/components/AttendanceQR'
+} from 'lucide-react';
+import { format, isPast, isFuture } from 'date-fns';
+import AttendanceQR from '@/src/components/AttendanceQR';
+import { useUserRole } from '@/hooks/useUserRole';
 
-export default function MyRegistrationsPage() {
-  const { userId } = useAuth()
-  const [registrations, setRegistrations] = React.useState<any[]>([])
-  const [loading, setLoading] = React.useState(true)
-  const [filter, setFilter] = React.useState<'all' | 'upcoming' | 'past'>('upcoming')
+export default function RegistrationsPage() {
+  const { userId } = useAuth();
+  const { role, theme } = useUserRole();
+  const [registrations, setRegistrations] = React.useState<any[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [filter, setFilter] = React.useState<'all' | 'upcoming' | 'past'>('upcoming');
 
   React.useEffect(() => {
     if (userId) {
-      fetchRegistrations()
+      fetchRegistrations();
     }
-  }, [userId])
+  }, [userId]);
 
   const fetchRegistrations = async () => {
     try {
-      const result = await getUserRegistrations()
+      const result = await getUserRegistrations();
       if (result.success) {
-        setRegistrations(result.data || [])
+        setRegistrations(result.data || []);
       }
     } catch (err) {
-      console.error('Failed to fetch registrations:', err)
+      console.error('Failed to fetch registrations:', err);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const filteredRegistrations = registrations.filter(reg => {
-    const eventDate = new Date(reg.events.start_time)
-    if (filter === 'upcoming') return isFuture(eventDate)
-    if (filter === 'past') return isPast(eventDate)
-    return true
-  })
+    const eventDate = new Date(reg.events.start_time);
+    if (filter === 'upcoming') return isFuture(eventDate);
+    if (filter === 'past') return isPast(eventDate);
+    return true;
+  });
 
-  const upcomingCount = registrations.filter(r => isFuture(new Date(r.events.start_time))).length
-  const pastCount = registrations.filter(r => isPast(new Date(r.events.start_time))).length
+  const upcomingCount = registrations.filter(r => isFuture(new Date(r.events.start_time))).length;
+  const pastCount = registrations.filter(r => isPast(new Date(r.events.start_time))).length;
 
   if (loading) {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center gap-4 px-4">
         <div className="relative">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#E89D71] to-[#D88C61] animate-pulse"></div>
+          <div 
+            className="w-16 h-16 rounded-full animate-pulse"
+            style={{
+              background: `linear-gradient(to bottom right, ${theme.primary}, ${theme.dark})`
+            }}
+          ></div>
           <Loader2 className="absolute inset-0 m-auto h-8 w-8 animate-spin text-white" />
         </div>
         <p className="text-[#6B5A4E] font-medium text-center">Loading your events...</p>
       </div>
-    )
+    );
   }
 
   return (
-    <div className="min-h-screen bg-[#FFFDF9]">
+    <div className="min-h-screen bg-white">
       {/* Hero Section */}
-      <div className="bg-gradient-to-br from-white via-[#FEF3EB] to-[#FEF3EB] px-4 pt-6 pb-8 border-b border-[#E89D71]/10">
+      <div 
+        className="px-4 pt-6 pb-8 border-b"
+        style={{
+          background: `linear-gradient(to bottom right, white, ${theme.light}, ${theme.light})`,
+          borderColor: `${theme.primary}1A`
+        }}
+      >
         <div className="max-w-4xl mx-auto space-y-4">
-          <div className="flex items-center gap-2 text-[#E89D71]">
+          <div className="flex items-center gap-2" style={{ color: theme.primary }}>
             <Ticket className="w-5 h-5" />
             <span className="text-sm font-bold uppercase tracking-wider">My Events</span>
           </div>
@@ -86,31 +97,43 @@ export default function MyRegistrationsPage() {
           <div className="flex gap-2 pt-2">
             <button
               onClick={() => setFilter('upcoming')}
-              className={`px-4 py-2 rounded-xl font-semibold text-sm transition-all ${
-                filter === 'upcoming'
-                  ? 'bg-[#E89D71] text-white shadow-lg shadow-[#E89D71]/30'
-                  : 'bg-white text-[#6B5A4E] hover:bg-zinc-50'
-              }`}
+              className="px-4 py-2 rounded-xl font-semibold text-sm transition-all"
+              style={filter === 'upcoming' ? {
+                backgroundColor: theme.primary,
+                color: 'white',
+                boxShadow: `0 10px 25px -5px ${theme.primary}50`
+              } : {
+                backgroundColor: 'white',
+                color: '#6B5A4E'
+              }}
             >
               Upcoming ({upcomingCount})
             </button>
             <button
               onClick={() => setFilter('past')}
-              className={`px-4 py-2 rounded-xl font-semibold text-sm transition-all ${
-                filter === 'past'
-                  ? 'bg-[#E89D71] text-white shadow-lg shadow-[#E89D71]/30'
-                  : 'bg-white text-[#6B5A4E] hover:bg-zinc-50'
-              }`}
+              className="px-4 py-2 rounded-xl font-semibold text-sm transition-all"
+              style={filter === 'past' ? {
+                backgroundColor: theme.primary,
+                color: 'white',
+                boxShadow: `0 10px 25px -5px ${theme.primary}50`
+              } : {
+                backgroundColor: 'white',
+                color: '#6B5A4E'
+              }}
             >
               Past ({pastCount})
             </button>
             <button
               onClick={() => setFilter('all')}
-              className={`px-4 py-2 rounded-xl font-semibold text-sm transition-all ${
-                filter === 'all'
-                  ? 'bg-[#E89D71] text-white shadow-lg shadow-[#E89D71]/30'
-                  : 'bg-white text-[#6B5A4E] hover:bg-zinc-50'
-              }`}
+              className="px-4 py-2 rounded-xl font-semibold text-sm transition-all"
+              style={filter === 'all' ? {
+                backgroundColor: theme.primary,
+                color: 'white',
+                boxShadow: `0 10px 25px -5px ${theme.primary}50`
+              } : {
+                backgroundColor: 'white',
+                color: '#6B5A4E'
+              }}
             >
               All ({registrations.length})
             </button>
@@ -123,15 +146,26 @@ export default function MyRegistrationsPage() {
         {filteredRegistrations.length > 0 ? (
           <div className="space-y-4 animate-in fade-in duration-500">
             {filteredRegistrations.map((reg) => {
-              const isPastEvent = isPast(new Date(reg.events.start_time))
-              const isAttended = reg.status === 'attended'
+              const isPastEvent = isPast(new Date(reg.events.start_time));
+              const isAttended = reg.status === 'attended';
 
               return (
                 <div 
                   key={reg.id} 
-                  className={`bg-white rounded-3xl border-2 ${
-                    isPastEvent ? 'border-zinc-100 opacity-75' : 'border-zinc-100 hover:border-[#E89D71]'
-                  } shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden`}
+                  className={`bg-white rounded-3xl border-2 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden ${
+                    isPastEvent ? 'opacity-75' : ''
+                  }`}
+                  style={{
+                    borderColor: isPastEvent ? '#f4f4f5' : '#f4f4f5'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isPastEvent) {
+                      e.currentTarget.style.borderColor = theme.primary;
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = '#f4f4f5';
+                  }}
                 >
                   <div className="p-5 space-y-4">
                     {/* Status Badge */}
@@ -176,19 +210,19 @@ export default function MyRegistrationsPage() {
 
                       <div className="grid gap-2 text-sm text-[#6B5A4E]">
                         <div className="flex items-center gap-3">
-                          <CalendarIcon className="w-4 h-4 text-[#E89D71] shrink-0" />
+                          <CalendarIcon className="w-4 h-4 shrink-0" style={{ color: theme.primary }} />
                           <span className="font-medium">
                             {format(new Date(reg.events.start_time), 'EEEE, dd MMMM yyyy')}
                           </span>
                         </div>
                         <div className="flex items-center gap-3">
-                          <Clock className="w-4 h-4 text-[#E89D71] shrink-0" />
+                          <Clock className="w-4 h-4 shrink-0" style={{ color: theme.primary }} />
                           <span>
                             {format(new Date(reg.events.start_time), 'HH:mm')} - {format(new Date(reg.events.end_time), 'HH:mm')}
                           </span>
                         </div>
                         <div className="flex items-start gap-3">
-                          <MapPin className="w-4 h-4 text-[#E89D71] shrink-0 mt-0.5" />
+                          <MapPin className="w-4 h-4 shrink-0 mt-0.5" style={{ color: theme.primary }} />
                           <span className="leading-relaxed">{reg.events.location}</span>
                         </div>
                       </div>
@@ -205,14 +239,19 @@ export default function MyRegistrationsPage() {
                     )}
                   </div>
                 </div>
-              )
+              );
             })}
           </div>
         ) : (
           /* Empty State */
           <div className="min-h-[50vh] flex flex-col items-center justify-center text-center px-4">
-            <div className="bg-gradient-to-br from-[#FEF3EB] to-[#FEF3EB]/50 p-12 rounded-3xl mb-6">
-              <Ticket className="h-16 w-16 text-[#E89D71]/40 mx-auto" />
+            <div 
+              className="p-12 rounded-3xl mb-6"
+              style={{
+                background: `linear-gradient(to bottom right, ${theme.light}, ${theme.light}80)`
+              }}
+            >
+              <Ticket className="h-16 w-16 mx-auto" style={{ color: `${theme.primary}66` }} />
             </div>
             <h3 className="text-2xl font-bold text-[#2D1E17] mb-3">
               {filter === 'upcoming' && 'No upcoming events'}
@@ -225,8 +264,12 @@ export default function MyRegistrationsPage() {
               {filter === 'all' && "Start your wellness journey by discovering and joining events that interest you."}
             </p>
             <a 
-              href="/participant/events"
-              className="inline-flex items-center gap-2 px-8 py-4 bg-[#E89D71] text-white rounded-xl font-bold hover:bg-[#D88C61] transition-colors shadow-lg shadow-[#E89D71]/30"
+              href="/portal/events"
+              className="inline-flex items-center gap-2 px-8 py-4 text-white rounded-xl font-bold transition-colors shadow-lg"
+              style={{
+                backgroundColor: theme.primary,
+                boxShadow: `0 10px 25px -5px ${theme.primary}50`
+              }}
             >
               <Sparkles className="w-5 h-5" />
               Discover Events
@@ -252,5 +295,5 @@ export default function MyRegistrationsPage() {
         )}
       </div>
     </div>
-  )
+  );
 }

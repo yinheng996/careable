@@ -1,10 +1,10 @@
-import * as React from "react";
+import * as React from 'react';
 import { getUserPreferences } from '@/app/actions/preferences';
 import { PreferencesProvider } from '@/components/PreferencesProvider';
 import type { UserPreferences } from '@/components/PreferencesProvider';
-import ParticipantClientLayout from './ParticipantClientLayout';
+import PortalClientLayout from './PortalClientLayout';
 
-export default async function ParticipantLayout({
+export default async function PortalLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -23,9 +23,9 @@ export default async function ParticipantLayout({
 
   return (
     <PreferencesProvider initialPreferences={initialPreferences}>
-      <ParticipantClientLayout>
+      <PortalClientLayout>
         {children}
-      </ParticipantClientLayout>
+      </PortalClientLayout>
     </PreferencesProvider>
   );
 }

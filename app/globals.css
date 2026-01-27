@@ -8,6 +8,32 @@
   --font-scale: 1;
   /* Explicitly set light color-scheme to override system preference */
   color-scheme: light;
+  
+  /* Role-based theme colors (default: volunteer green) */
+  --color-primary: #86B1A4;
+  --color-primary-dark: #6FA08F;
+  --color-primary-light: #E8F3F0;
+}
+
+/* Volunteer Theme (Green) */
+[data-role="volunteer"] {
+  --color-primary: #86B1A4;
+  --color-primary-dark: #6FA08F;
+  --color-primary-light: #E8F3F0;
+}
+
+/* Caregiver Theme (Pink) */
+[data-role="caregiver"] {
+  --color-primary: #EC4899;
+  --color-primary-dark: #DB2777;
+  --color-primary-light: #FCE7F3;
+}
+
+/* Participant Theme (Orange) */
+[data-role="participant"] {
+  --color-primary: #E89D71;
+  --color-primary-dark: #D88C61;
+  --color-primary-light: #FEF3EB;
 }
 
 /* Dark mode colors - Premium aesthetic */

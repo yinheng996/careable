@@ -1,13 +1,13 @@
-'use client'
+'use client';
 
-import * as React from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import * as React from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import { 
   getParticipantEventById, 
   registerForEvent, 
   getUserProfile,
   checkRegistration 
-} from '@/app/actions/participant'
+} from '@/app/actions/participant';
 import { 
   Calendar as CalendarIcon, 
   MapPin, 
@@ -18,35 +18,34 @@ import {
   FileText,
   Loader2,
   AlertCircle,
-  CheckCircle2,
-  Sparkles
-} from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { format } from 'date-fns'
-import Link from 'next/link'
-import { cn } from '@/lib/utils'
+  CheckCircle2
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { format } from 'date-fns';
+import { useUserRole } from '@/hooks/useUserRole';
 
-export default function OpportunityDetailPage() {
-  const { id } = useParams()
-  const router = useRouter()
-  const [event, setEvent] = React.useState<any>(null)
-  const [profile, setProfile] = React.useState<any>(null)
-  const [isRegistered, setIsRegistered] = React.useState(false)
-  const [loading, setLoading] = React.useState(true)
-  const [error, setError] = React.useState<string | null>(null)
+export default function EventDetailPage() {
+  const { id } = useParams();
+  const router = useRouter();
+  const { role, theme, isVolunteer } = useUserRole();
+  const [event, setEvent] = React.useState<any>(null);
+  const [profile, setProfile] = React.useState<any>(null);
+  const [isRegistered, setIsRegistered] = React.useState(false);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
   
   // Registration Flow State
-  const [showNamePrompt, setShowNamePrompt] = React.useState(false)
-  const [fullName, setFullName] = React.useState('')
-  const [isRegistering, setIsRegistering] = React.useState(false)
+  const [showNamePrompt, setShowNamePrompt] = React.useState(false);
+  const [fullName, setFullName] = React.useState('');
+  const [isRegistering, setIsRegistering] = React.useState(false);
 
   React.useEffect(() => {
     if (id) {
-      fetchData()
+      fetchData();
     }
-  }, [id])
+  }, [id]);
 
   const fetchData = async () => {
     try {
@@ -54,63 +53,82 @@ export default function OpportunityDetailPage() {
         getParticipantEventById(id as string),
         getUserProfile(),
         checkRegistration(id as string)
-      ])
+      ]);
 
       if (eventRes.success) {
-        setEvent(eventRes.data)
+        setEvent(eventRes.data);
       } else {
-        setError(eventRes.error || 'Failed to fetch event')
+        setError(eventRes.error || 'Failed to fetch event');
       }
 
       if (profileRes.success) {
-        setProfile(profileRes.data)
-        setFullName(profileRes.data.full_name || '')
+        setProfile(profileRes.data);
+        setFullName(profileRes.data.full_name || '');
       }
 
       if (regRes.success) {
-        setIsRegistered(regRes.isRegistered || false)
+        setIsRegistered(regRes.isRegistered || false);
       }
     } catch (err: any) {
-      setError(err.message)
+      setError(err.message);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleRegisterClick = () => {
     if (profile?.is_first_time) {
-      setShowNamePrompt(true)
+      setShowNamePrompt(true);
     } else {
-      handleConfirmRegistration()
+      handleConfirmRegistration();
     }
-  }
+  };
 
   const handleConfirmRegistration = async () => {
-    setIsRegistering(true)
+    setIsRegistering(true);
     try {
-      const result = await registerForEvent(id as string, showNamePrompt ? fullName : undefined)
+      const result = await registerForEvent(id as string, showNamePrompt ? fullName : undefined);
       if (result.success) {
-        setIsRegistered(true)
-        setShowNamePrompt(false)
-        const updatedProfile = await getUserProfile()
-        if (updatedProfile.success) setProfile(updatedProfile.data)
+        setIsRegistered(true);
+        setShowNamePrompt(false);
+        const updatedProfile = await getUserProfile();
+        if (updatedProfile.success) setProfile(updatedProfile.data);
       } else {
-        alert(result.error || 'Registration failed')
+        alert(result.error || 'Registration failed');
       }
     } catch (err: any) {
-      alert(err.message)
+      alert(err.message);
     } finally {
-      setIsRegistering(false)
+      setIsRegistering(false);
     }
-  }
+  };
+
+  // Role-specific content
+  const content = {
+    volunteer: {
+      pageTitle: 'Volunteer Opportunity Details',
+      registerButtonText: 'Sign Up for Opportunity',
+      capacityLabel: 'Volunteers Needed'
+    },
+    caregiver: {
+      pageTitle: 'Event Details',
+      registerButtonText: 'Register Participant',
+      capacityLabel: 'Spots Available'
+    },
+    participant: {
+      pageTitle: 'Event Details',
+      registerButtonText: 'Sign Up for Event',
+      capacityLabel: 'Spots Available'
+    }
+  }[role];
 
   if (loading) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
-        <Loader2 className="h-10 w-10 animate-spin text-[#E89D71]" />
-        <p className="text-zinc-500 font-medium">Loading opportunity details...</p>
+        <Loader2 className="h-10 w-10 animate-spin" style={{ color: theme.primary }} />
+        <p className="text-zinc-500 font-medium">Loading event details...</p>
       </div>
-    )
+    );
   }
 
   if (error || !event) {
@@ -119,17 +137,17 @@ export default function OpportunityDetailPage() {
         <div className="bg-red-50 p-6 rounded-3xl border border-red-100 space-y-4">
           <AlertCircle className="h-12 w-12 text-red-500 mx-auto" />
           <h2 className="text-xl font-bold text-red-900">Oops! Something went wrong</h2>
-          <p className="text-red-700">{error || "We couldn't find the opportunity you're looking for."}</p>
+          <p className="text-red-700">{error || "We couldn't find the event you're looking for."}</p>
           <Button 
-            onClick={() => router.push('/volunteer/opportunities')}
+            onClick={() => router.push('/portal/events')}
             variant="outline" 
             className="rounded-xl border-red-200 text-red-700 hover:bg-red-100"
           >
-            Back to Opportunities
+            Back to Events
           </Button>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -142,7 +160,7 @@ export default function OpportunityDetailPage() {
         </button>
         <div>
           <h1 className="text-3xl font-bold text-[#2D1E17] leading-tight">{event.title}</h1>
-          <p className="text-[#6B5A4E]">Volunteer Opportunity Details</p>
+          <p className="text-[#6B5A4E]">{content.pageTitle}</p>
         </div>
       </div>
 
@@ -151,7 +169,7 @@ export default function OpportunityDetailPage() {
           <Card className="rounded-3xl border-zinc-100 shadow-sm overflow-hidden bg-white">
             <CardHeader className="bg-zinc-50/50 border-b border-zinc-100 py-6">
               <CardTitle className="text-lg font-bold text-[#2D1E17] flex items-center gap-2">
-                <FileText className="w-5 h-5 text-[#E89D71]" />
+                <FileText className="w-5 h-5" style={{ color: theme.primary }} />
                 Description
               </CardTitle>
             </CardHeader>
@@ -164,11 +182,14 @@ export default function OpportunityDetailPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Card className="rounded-2xl border-zinc-100 shadow-sm p-6 bg-white flex items-center gap-4">
-              <div className="bg-[#FEF3EB] p-3 rounded-xl text-[#E89D71]">
-                <Users className="w-6 h-6" />
+              <div 
+                className="p-3 rounded-xl"
+                style={{ backgroundColor: `${theme.light}` }}
+              >
+                <Users className="w-6 h-6" style={{ color: theme.primary }} />
               </div>
               <div>
-                <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Volunteers Needed</p>
+                <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider">{content.capacityLabel}</p>
                 <p className="text-xl font-bold text-[#2D1E17]">{event.capacity || 20} Spots</p>
               </div>
             </Card>
@@ -190,7 +211,7 @@ export default function OpportunityDetailPage() {
           <Card className="rounded-3xl border-zinc-100 shadow-sm p-6 bg-white space-y-6">
             <div className="space-y-4">
               <div className="flex items-start gap-3">
-                <CalendarIcon className="w-5 h-5 text-[#E89D71] shrink-0 mt-0.5" />
+                <CalendarIcon className="w-5 h-5 shrink-0 mt-0.5" style={{ color: theme.primary }} />
                 <div>
                   <p className="font-bold text-[#2D1E17]">Date</p>
                   <p className="text-sm text-[#6B5A4E]">{format(new Date(event.start_time), 'EEEE, dd MMMM yyyy')}</p>
@@ -198,7 +219,7 @@ export default function OpportunityDetailPage() {
               </div>
 
               <div className="flex items-start gap-3">
-                <Clock className="w-5 h-5 text-[#E89D71] shrink-0 mt-0.5" />
+                <Clock className="w-5 h-5 shrink-0 mt-0.5" style={{ color: theme.primary }} />
                 <div>
                   <p className="font-bold text-[#2D1E17]">Time</p>
                   <p className="text-sm text-[#6B5A4E]">
@@ -208,7 +229,7 @@ export default function OpportunityDetailPage() {
               </div>
 
               <div className="flex items-start gap-3">
-                <MapPin className="w-5 h-5 text-[#E89D71] shrink-0 mt-0.5" />
+                <MapPin className="w-5 h-5 shrink-0 mt-0.5" style={{ color: theme.primary }} />
                 <div>
                   <p className="font-bold text-[#2D1E17]">Venue</p>
                   <p className="text-sm text-[#6B5A4E] leading-relaxed">{event.location}</p>
@@ -226,9 +247,13 @@ export default function OpportunityDetailPage() {
                 <Button 
                   onClick={handleRegisterClick}
                   disabled={isRegistering}
-                  className="w-full bg-[#E89D71] hover:bg-[#D88C61] text-white rounded-xl font-bold h-12 shadow-lg shadow-[#E89D71]/20 transition-all hover:scale-[1.02]"
+                  className="w-full text-white rounded-xl font-bold h-12 shadow-lg transition-all hover:scale-[1.02]"
+                  style={{
+                    backgroundColor: theme.primary,
+                    boxShadow: `0 10px 25px -5px ${theme.primary}40`
+                  }}
                 >
-                  {isRegistering ? <Loader2 className="w-5 h-5 animate-spin" /> : "Sign Up for Opportunity"}
+                  {isRegistering ? <Loader2 className="w-5 h-5 animate-spin" /> : content.registerButtonText}
                 </Button>
               )}
             </div>
@@ -263,7 +288,11 @@ export default function OpportunityDetailPage() {
                 <Button 
                   disabled={!fullName.trim() || isRegistering}
                   onClick={handleConfirmRegistration}
-                  className="flex-1 bg-[#E89D71] hover:bg-[#D88C61] text-white rounded-xl h-12 font-bold shadow-lg shadow-[#E89D71]/20"
+                  className="flex-1 text-white rounded-xl h-12 font-bold shadow-lg"
+                  style={{
+                    backgroundColor: theme.primary,
+                    boxShadow: `0 10px 25px -5px ${theme.primary}40`
+                  }}
                 >
                   {isRegistering ? <Loader2 className="w-5 h-5 animate-spin" /> : "Complete & Sign Up"}
                 </Button>
@@ -273,5 +302,5 @@ export default function OpportunityDetailPage() {
         </div>
       )}
     </div>
-  )
+  );
 }

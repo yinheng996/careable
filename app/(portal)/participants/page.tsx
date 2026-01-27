@@ -2,8 +2,16 @@ import { getManagedParticipants } from '@/app/actions/caregiver';
 import { Card } from '@/components/ui/card';
 import Link from 'next/link';
 import { UserPlus, Calendar, Heart, AlertCircle } from 'lucide-react';
+import { getCurrentUserRole } from '@/lib/role-utils';
+import { redirect } from 'next/navigation';
 
-export default async function CaregiverParticipantsPage() {
+export default async function ParticipantsPage() {
+  // Guard: Only caregivers can access this page
+  const role = await getCurrentUserRole();
+  if (role !== 'caregiver') {
+    redirect('/portal/dashboard');
+  }
+
   const result = await getManagedParticipants();
   const participants = result.success ? result.data : [];
 
@@ -16,8 +24,8 @@ export default async function CaregiverParticipantsPage() {
           <p className="text-[#6B5A4E] mt-1">Children and individuals you care for</p>
         </div>
         <Link 
-          href="/caregiver/participants/add"
-          className="flex items-center gap-2 px-4 py-2 bg-[#E89D71] text-white rounded-xl font-semibold hover:bg-[#D88C61] transition-colors shadow-sm"
+          href="/portal/participants/add"
+          className="flex items-center gap-2 px-4 py-2 bg-[#EC4899] text-white rounded-xl font-semibold hover:bg-[#DB2777] transition-colors shadow-sm"
         >
           <UserPlus className="w-5 h-5" />
           Add Participant
@@ -26,17 +34,17 @@ export default async function CaregiverParticipantsPage() {
 
       {/* Empty State */}
       {participants.length === 0 ? (
-        <Card className="p-12 text-center bg-gradient-to-br from-[#FEF3EB] to-white border-0">
-          <div className="w-16 h-16 bg-[#E89D71]/20 rounded-full flex items-center justify-center mx-auto mb-4">
-            <UserPlus className="w-8 h-8 text-[#E89D71]" />
+        <Card className="p-12 text-center bg-gradient-to-br from-[#FCE7F3] to-white border-0">
+          <div className="w-16 h-16 bg-[#EC4899]/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <UserPlus className="w-8 h-8 text-[#EC4899]" />
           </div>
           <h3 className="text-lg font-bold text-[#2D1E17] mb-2">No participants yet</h3>
           <p className="text-[#6B5A4E] mb-6 max-w-md mx-auto">
             Add a participant to register them for events and manage their activity schedule
           </p>
           <Link 
-            href="/caregiver/participants/add"
-            className="inline-block px-6 py-3 bg-[#E89D71] text-white rounded-xl font-semibold hover:bg-[#D88C61] transition-colors shadow-sm"
+            href="/portal/participants/add"
+            className="inline-block px-6 py-3 bg-[#EC4899] text-white rounded-xl font-semibold hover:bg-[#DB2777] transition-colors shadow-sm"
           >
             Add Your First Participant
           </Link>
@@ -54,8 +62,8 @@ export default async function CaregiverParticipantsPage() {
                   {/* Participant Info */}
                   <div className="flex-1 space-y-3">
                     <div className="flex items-start gap-3">
-                      <div className="w-12 h-12 bg-[#FEF3EB] rounded-xl flex items-center justify-center flex-shrink-0">
-                        <Heart className="w-6 h-6 text-[#E89D71]" />
+                      <div className="w-12 h-12 bg-[#FCE7F3] rounded-xl flex items-center justify-center flex-shrink-0">
+                        <Heart className="w-6 h-6 text-[#EC4899]" />
                       </div>
                       <div className="flex-1">
                         <h3 className="text-lg font-bold text-[#2D1E17]">{displayName}</h3>
@@ -74,11 +82,11 @@ export default async function CaregiverParticipantsPage() {
 
                     {/* Special Needs */}
                     {hasSpecialNeeds && (
-                      <div className="ml-15 p-3 bg-[#FEF3EB] rounded-lg border border-[#E89D71]/20">
+                      <div className="ml-15 p-3 bg-[#FCE7F3] rounded-lg border border-[#EC4899]/20">
                         <div className="flex items-start gap-2">
-                          <AlertCircle className="w-4 h-4 text-[#E89D71] mt-0.5 flex-shrink-0" />
+                          <AlertCircle className="w-4 h-4 text-[#EC4899] mt-0.5 flex-shrink-0" />
                           <div>
-                            <div className="text-xs font-semibold text-[#E89D71] uppercase tracking-wide mb-1">
+                            <div className="text-xs font-semibold text-[#EC4899] uppercase tracking-wide mb-1">
                               Special Needs
                             </div>
                             <div className="text-sm text-[#6B5A4E]">{link.participant.special_needs}</div>
@@ -91,14 +99,14 @@ export default async function CaregiverParticipantsPage() {
                   {/* Actions */}
                   <div className="flex flex-col gap-2 w-full sm:w-auto">
                     <Link 
-                      href={`/caregiver/participants/${link.participant_id}/events`}
-                      className="flex items-center justify-center gap-2 px-4 py-2 bg-[#E89D71] text-white rounded-lg font-medium hover:bg-[#D88C61] transition-colors text-sm"
+                      href={`/portal/participants/${link.participant_id}/events`}
+                      className="flex items-center justify-center gap-2 px-4 py-2 bg-[#EC4899] text-white rounded-lg font-medium hover:bg-[#DB2777] transition-colors text-sm"
                     >
                       <Calendar className="w-4 h-4" />
                       View Events
                     </Link>
                     <Link 
-                      href={`/caregiver/participants/${link.participant_id}/edit`}
+                      href={`/portal/participants/${link.participant_id}/edit`}
                       className="flex items-center justify-center gap-2 px-4 py-2 bg-white border border-zinc-200 text-[#6B5A4E] rounded-lg font-medium hover:bg-zinc-50 transition-colors text-sm"
                     >
                       Edit Details
