@@ -58,8 +58,15 @@ interface VerifyResult {
 /**
  * Verifies a token by hashing it and looking up the registration.
  * Marks attendance if valid and not already checked in.
+ * @param token - The QR code token to verify
+ * @param staffUserId - The ID of the staff member performing the check-in
+ * @param notes - Optional attendance notes
  */
-export async function verifyQrToken(token: string): Promise<VerifyResult> {
+export async function verifyQrToken(
+  token: string, 
+  staffUserId?: string,
+  notes?: string
+): Promise<VerifyResult> {
   const supabase = await createClient();
 
   // 1. Basic sanity check
@@ -95,13 +102,25 @@ export async function verifyQrToken(token: string): Promise<VerifyResult> {
     return { status: 'already_checked_in' };
   }
 
-  // 5. Mark attendance
+  // 5. Mark attendance (with staff tracking)
+  const updateData: any = {
+    status: 'attended' as const,
+    check_in_at: new Date().toISOString()
+  };
+
+  // Add staff tracking if staffUserId provided
+  if (staffUserId) {
+    updateData.checked_in_by = staffUserId;
+  }
+
+  // Add notes if provided
+  if (notes) {
+    updateData.attendance_notes = notes;
+  }
+
   const { error: updateError } = await supabase
     .from('registrations')
-    .update({
-      status: 'attended',
-      check_in_at: new Date().toISOString()
-    })
+    .update(updateData)
     .eq('id', registration.id);
 
   if (updateError) {

@@ -6,22 +6,31 @@ import { NextResponse } from 'next/server';
  * POST /api/qr/verify
  * Verifies a QR token and marks attendance.
  * Restricted to staff and admins.
+ * 
+ * Request body:
+ * - token: string (required) - The QR code token
+ * - notes: string (optional) - Attendance notes
  */
 export async function POST(req: Request) {
   try {
-    const { sessionClaims } = await auth();
+    const { userId, sessionClaims } = await auth();
     const userRole = sessionClaims?.metadata?.role;
+
+    if (!userId) {
+      return new NextResponse('Unauthorized', { status: 401 });
+    }
 
     if (userRole !== 'staff' && userRole !== 'admin') {
       return new NextResponse('Forbidden: Only staff can verify attendance', { status: 403 });
     }
 
-    const { token } = await req.json();
+    const { token, notes } = await req.json();
     if (!token) {
       return NextResponse.json({ error: 'Token is required' }, { status: 400 });
     }
 
-    const result = await verifyQrToken(token);
+    // Pass staff userId and optional notes to track who performed the check-in
+    const result = await verifyQrToken(token, userId, notes);
 
     if (result.status === 'ok') {
       return NextResponse.json({

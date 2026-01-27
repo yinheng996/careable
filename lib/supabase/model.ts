@@ -1,10 +1,16 @@
 /**
  * Careable Database Schema Types
  * Matches the PostgreSQL schema in Supabase.
+ * Last updated: Migration 08 (January 2026)
  */
 
 export type UserRole = 'admin' | 'staff' | 'volunteer' | 'caregiver' | 'participant';
 export type RegistrationStatus = 'registered' | 'attended' | 'cancelled';
+export type EventStatus = 'active' | 'cancelled' | 'completed';
+export type Relationship = 'parent' | 'guardian' | 'sibling' | 'relative' | 'other';
+export type LanguagePreference = 'en' | 'zh' | 'ms';
+export type RegistrationSource = 'self' | 'caregiver' | 'staff';
+export type TargetAudience = 'participants' | 'volunteers' | 'both';
 
 export interface Profile {
   id: string; // TEXT (Clerk ID)
@@ -13,6 +19,11 @@ export interface Profile {
   role: UserRole;
   membership_type: string | null;
   managed_by: string | null; // TEXT reference to Profile.id
+  is_first_time: boolean; // Added in migration 06
+  participant_full_name: string | null; // Added in migration 08
+  language_preference: LanguagePreference; // Added in migration 08
+  special_needs: string | null; // Added in migration 08
+  emergency_contact: string | null; // Added in migration 08
   created_at: string;
   updated_at: string;
 }
@@ -27,6 +38,12 @@ export interface Event {
   end_time: string;
   capacity: number;
   is_accessible: boolean;
+  status: EventStatus; // Added in migration 05
+  image_url: string | null; // Added in migration 08
+  target_audience: TargetAudience; // Added in migration 08
+  min_age: number | null; // Added in migration 08
+  max_age: number | null; // Added in migration 08
+  requires_guardian: boolean; // Added in migration 08
   created_at: string;
 }
 
@@ -37,6 +54,9 @@ export interface Registration {
   ticket_code: string; // Unique slug/code for QR
   status: RegistrationStatus;
   check_in_at: string | null; // Timestamptz
+  checked_in_by: string | null; // Added in migration 08
+  attendance_notes: string | null; // Added in migration 08
+  registration_source: RegistrationSource; // Added in migration 08
   created_at: string; // Timestamptz
 }
 
@@ -53,3 +73,72 @@ export type RegistrationWithEvent = Registration & {
 export type RegistrationWithUser = Registration & {
   profile: Pick<Profile, 'full_name' | 'email' | 'membership_type'>;
 };
+
+/**
+ * Caregiver-Participant Relationship (Added in migration 08)
+ */
+export interface CaregiverParticipant {
+  id: string; // UUID
+  caregiver_id: string; // Profile.id (TEXT)
+  participant_id: string; // Profile.id (TEXT)
+  relationship: Relationship;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Composite type for Caregiver view with participant details
+ */
+export type CaregiverParticipantWithProfile = CaregiverParticipant & {
+  participant: Pick<Profile, 'id' | 'full_name' | 'email' | 'participant_full_name' | 'special_needs'>;
+};
+
+/**
+ * Composite type for Registration with attendance tracking details
+ */
+export type RegistrationWithAttendance = Registration & {
+  event: Pick<Event, 'title' | 'location' | 'start_time' | 'end_time'>;
+  checked_in_by_profile: Pick<Profile, 'full_name'> | null;
+};
+
+/**
+ * Analytics: Event Attendance Summary (from view in migration 08)
+ */
+export interface EventAttendanceSummary {
+  event_id: string;
+  title: string;
+  start_time: string;
+  location: string;
+  capacity: number;
+  status: EventStatus;
+  total_registrations: number;
+  total_attended: number;
+  attendance_rate_percent: number;
+  created_by: string;
+  created_by_name: string | null;
+}
+
+/**
+ * Analytics: User Engagement Summary (from view in migration 08)
+ */
+export interface UserEngagementSummary {
+  id: string;
+  full_name: string | null;
+  email: string;
+  role: UserRole;
+  total_registrations: number;
+  total_attended: number;
+  attendance_rate_percent: number;
+  last_attended_at: string | null;
+}
+
+/**
+ * Analytics: Staff Productivity Summary (from view in migration 08)
+ */
+export interface StaffProductivitySummary {
+  staff_id: string;
+  staff_name: string | null;
+  events_created: number;
+  check_ins_performed: number;
+  active_events: number;
+}

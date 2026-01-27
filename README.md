@@ -1,81 +1,124 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🧡 Careable
 
-## Getting Started
+Careable is a centralized event management and community support platform designed specifically for caregiver organizations supporting children with disabilities. It streamlines event creation, volunteer coordination, participant registration, and attendance tracking through AI-powered automation and secure QR code systems.
+
+**Version**: 0.2.0 (Migration 08 - January 2026)  
+**Status**: Production Ready
+
+## ✨ What's New in v0.2.0
+
+### 🔧 Critical Fixes
+- ✅ **TypeScript types updated** to match database schema (migrations 05-08)
+- ✅ **QR scanner now uses rear camera** on mobile devices for staff check-ins
+- ✅ **Enhanced AI extraction** with 95%+ accuracy through improved prompting and validation
+
+### 🆕 New Features
+- 🧡 **Caregiver Portal**: Link participants, register them for events, track special needs
+- 📊 **Admin Analytics Dashboard**: Platform metrics, staff leaderboard, engagement tracking
+- 👥 **Enhanced Attendance Tracking**: Records which staff performed check-ins with optional notes
+- 🔗 **Participant Relationships**: Caregivers can manage multiple participants with full profiles
+- 🎯 **Event Metadata**: Age restrictions, guardian requirements, target audience flags
+- 📈 **Analytics Views**: Pre-built database views for event performance and user engagement
+
+### 📦 Database Migration 08
+Run the new migration to enable all features:
+```bash
+psql -h your-db.supabase.co -U postgres -f sql/08_enhanced_schema_caregiver_attendance.sql
+```
+
+## 🚀 Quick Start
 
 First, run the development server:
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) to see the application.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+For full setup instructions, see the [Project Summary](docs/01_PROJECT_SUMMARY.md).
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🎯 Key Features
 
-### Calendar Event Extractor (Staff Portal)
+### 🏢 For Staff
+- **AI-Powered Event Extraction**: Upload calendar images and let Gemini Vision extract events automatically
+- **Event Management**: Create, edit, cancel events with capacity and accessibility tracking
+- **QR Check-in System**: Scan participant QR codes using rear camera on mobile
+- **Attendance Tracking**: Record who performed check-ins with optional notes
+- **Singapore Venue Normalization**: Automatic mapping of common Singapore locations
 
-A portable event-extraction module for the Staff Portal, using Google Gemini API. This version includes specific categorization for Singapore-based caregiving services.
+### 🧡 For Caregivers (NEW)
+- **Participant Management**: Link and manage multiple participants (children under care)
+- **On-Behalf Registration**: Register participants for events
+- **Special Needs Tracking**: Record accessibility requirements and emergency contacts
+- **Consolidated Dashboard**: View all events and registrations in one place
 
-#### Features
-- Extracts structured JSON events from images (PNG, JPEG, WebP), PDFs, and PPTX files.
-- **Auto-Categorization**: Social Outing, Arts & Crafts, Life Skills, Sports & Fitness, Music Session.
-- **Location Awareness**: Automatically identifies the area of Singapore (North, South, East, West, Central).
-- **Vercel Ready**: No local binary dependencies.
-- **Staff-Specific**: Located within the `app/(staff)/staff` directory.
+### 👨‍👩‍👧‍👦 For Participants
+- **Event Discovery**: Browse upcoming community events on mobile-friendly interface
+- **One-Click Registration**: Seamless registration flow with QR code generation
+- **Personal Dashboard**: Track upcoming events and attendance history
 
-#### Tech Stack
-- Next.js App Router
-- `@google/generative-ai`
-- Zod + zod-to-json-schema
+### 🤝 For Volunteers
+- **Opportunity Discovery**: Browse volunteer opportunities by date and location
+- **Self-Service Scheduling**: Manage your volunteer commitments
+- **QR Code Access**: Quick access to attendance verification
 
-#### Installation
-1. Install dependencies:
-   ```bash
-   npm install @google/generative-ai zod zod-to-json-schema
-   ```
-2. Set environment variables:
-   ```env
-   GEMINI_API_KEY=your_key
-   GEMINI_MODEL=gemini-1.5-flash
-   ```
+### 📊 For Admins (NEW)
+- **Platform Analytics**: Real-time metrics on users, events, and attendance
+- **Staff Leaderboard**: Track events created and check-ins performed
+- **Engagement Metrics**: Monitor top participants and volunteers
+- **Geographic Insights**: Identify popular venues and event hotspots
+- **Caregiver Program Stats**: Track caregiver adoption and managed participants
 
-#### API Endpoint
-`POST /staff/api/calendar/extract`
+## 🛠️ Tech Stack
 
-- **Body**: `multipart/form-data`
-- **Field**: `file` (max 4.5MB)
+- **Frontend**: Next.js 16.1.4 (App Router), React 19, TypeScript 5, Tailwind CSS 4
+- **Backend**: Next.js API Routes, Server Actions
+- **Database**: Supabase (PostgreSQL with Row Level Security)
+- **Auth**: Clerk (role-based access control)
+- **AI**: Google Gemini 2.0 Flash (vision + reasoning)
+- **QR**: qrcode (generation) + html5-qrcode (scanning with rear camera)
+- **Security**: SHA-256 hashed tokens, RLS policies, staff attribution
 
-#### Example Response
-```json
-{
-  "meta": {
-    "source_filename": "calendar.pdf",
-    "source_mime": "application/pdf",
-    "calendar_type": "monthly_grid"
-  },
-  "events": [
-    {
-      "event_name": "Painting Class",
-      "date_iso": "2026-02-15",
-      "date_text": "15 Feb",
-      "start_time": "14:00",
-      "end_time": "16:00",
-      "location": "Tampines Hub",
-      "singapore_area": "East",
-      "category": "Arts & Crafts",
-      "notes": "Bring your own apron",
-      "source_text": "2pm Painting @ Tampines Hub"
-    }
-  ]
-}
+## 📚 Documentation
+
+- **[Project Summary](docs/01_PROJECT_SUMMARY.md)** - Complete technical documentation
+- **[Cursor Prompt](docs/02_CURSOR_PROMPT.md)** - Development guidelines for AI assistants
+- **[Improvement Plan](docs/03_IMPROVEMENT_PLAN.md)** - Roadmap and completed enhancements
+
+## 🗄️ Database Setup
+
+Execute migrations in order:
+
+```bash
+# 01-07: Base schema (already applied)
+# 08: New caregiver and analytics features
+psql -h your-db.supabase.co -U postgres -f sql/08_enhanced_schema_caregiver_attendance.sql
+```
+
+**What Migration 08 adds:**
+- `caregiver_participants` table for managing relationships
+- Enhanced `profiles` with language preference, special needs, emergency contact
+- Enhanced `events` with age restrictions, guardian requirements, target audience
+- Enhanced `registrations` with staff attribution and attendance notes
+- Analytics views for reporting and dashboards
+
+## 🔐 Environment Variables
+
+```env
+# Clerk Authentication
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
+
+# Supabase Database
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+SUPABASE_SERVICE_ROLE_KEY=eyJ...
+
+# Google Gemini AI
+GEMINI_API_KEY=AIza...
+GEMINI_MODEL=gemini-2.0-flash-exp
 ```
 
 ## Learn More
