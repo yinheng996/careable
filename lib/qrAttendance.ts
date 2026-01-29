@@ -26,15 +26,21 @@ export async function issueQrForRegistration(registrationId: string): Promise<Is
 
   // 3. Update the registration record with the token hash
   // We use ticket_code field to store the hash securely
-  const { error } = await supabase
+  console.log('[issueQrForRegistration] Updating registration:', registrationId);
+  console.log('[issueQrForRegistration] Token hash:', tokenHash.substring(0, 20) + '...');
+  
+  const { error, data } = await supabase
     .from('registrations')
     .update({ ticket_code: tokenHash })
-    .eq('id', registrationId);
+    .eq('id', registrationId)
+    .select();
 
   if (error) {
-    console.error('Error updating registration with token hash:', error);
+    console.error('[issueQrForRegistration] Error updating registration with token hash:', error);
     throw new Error('Failed to issue QR code');
   }
+  
+  console.log('[issueQrForRegistration] Update successful, rows affected:', data?.length || 0);
 
   // 4. Generate QR code image (Base64 Data URI)
   const qrBase64 = await QRCode.toDataURL(token, {
@@ -86,7 +92,8 @@ export async function verifyQrToken(
       id,
       check_in_at,
       status,
-      profiles (
+      user_id,
+      profiles!registrations_user_id_fkey (
         full_name,
         role
       )
